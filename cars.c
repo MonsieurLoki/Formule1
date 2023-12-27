@@ -14,7 +14,6 @@
 #include <time.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include "shared_memory.h"
 
 #define IPC_RESULT_ERROR (-1)
 #define NB_VOITURE 4
