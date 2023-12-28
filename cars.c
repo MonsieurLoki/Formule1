@@ -17,7 +17,7 @@
 
 #define IPC_RESULT_ERROR (-1)
 #define NB_VOITURE 4
-
+#define NB_TOUR 3
 #ifndef SHARED_MEMORY_H
 #define SHARED_MEMORY_H
 
@@ -43,6 +43,7 @@ struct Car
     float best_time_sector3;
     int position;
     int secteur_courant;
+    int tour_courant;
 };
 
 // definition of the Best_sector times
@@ -147,6 +148,7 @@ void gererSecteur(int car_nr, int nr_secteur)
 
 void dessiner(int car_nr, int position)
 {
+    int tour_courant = shmem_data->cars[car_nr].tour_courant;
     int secteur_courant = shmem_data->cars[car_nr].secteur_courant;
     const int nombreTirets = 30;
     char secteur_0[nombreTirets + 1];
@@ -190,31 +192,31 @@ void dessiner(int car_nr, int position)
         secteur_2[positionEtoile] = '*';
     }
 
-    printf("%3d) voiture sect:%2d, pos:%3d ", car_nr, secteur_courant, position);
+    printf("%3d) voiture sect:%2d, pos:%3d, tour:%d ", car_nr, secteur_courant, position, tour_courant);
 
     printf("%s%s%s\n", secteur_0, secteur_1, secteur_2);
 }
 
 // prend la valeur a la fin de la chaine de caractère après la |
-int getValue(char *chaine)
-{
-    // Chercher la position du caractère '|'
-    char *separator = strchr(chaine, '|');
+// int getValue(char *chaine)
+// {
+//     // Chercher la position du caractère '|'
+//     char *separator = strchr(chaine, '|');
 
-    if (separator != NULL)
-    {
-        // Utiliser strtok pour diviser la chaîne à partir de '|'
-        char *token = strtok(separator, "|");
+//     if (separator != NULL)
+//     {
+//         // Utiliser strtok pour diviser la chaîne à partir de '|'
+//         char *token = strtok(separator, "|");
 
-        // Utiliser atoi pour convertir le token suivant '|' en entier
-        if (token != NULL)
-        {
-            return atoi(token);
-        }
-    }
+//         // Utiliser atoi pour convertir le token suivant '|' en entier
+//         if (token != NULL)
+//         {
+//             return atoi(token);
+//         }
+//     }
 
-    return -1; // Valeur par défaut si le symbole '|' n'est pas trouvé ou s'il n'y a pas de valeur après '|'
-}
+//     return -1; // Valeur par défaut si le symbole '|' n'est pas trouvé ou s'il n'y a pas de valeur après '|'
+// }
 
 void vivre_ma_vie_de_voiture(int car_nr)
 {
@@ -227,12 +229,16 @@ void vivre_ma_vie_de_voiture(int car_nr)
     }
 
     shmem_data = (Shmem_data *)block;
-
+    int tour_courant = 0;
     srand(time(NULL) + car_nr);
-
-    gererSecteur(car_nr, 0);
-    gererSecteur(car_nr, 1);
-    gererSecteur(car_nr, 2);
+    while (tour_courant < NB_TOUR)
+    {
+        tour_courant += 1;
+        shmem_data->cars[car_nr].tour_courant = tour_courant;
+        gererSecteur(car_nr, 0);
+        gererSecteur(car_nr, 1);
+        gererSecteur(car_nr, 2);
+    }
 
     // int i = 0;
     // int delay = 1;

@@ -4,7 +4,7 @@
 Fait :
 -	création d'un process père et fork d'un fils
 -	ajout de plusieurs fils
--	**transmission d'information entre fils et père via pipe (première idée)
+-	**transmission d'information entre fils et père via pipe (première idée, à remplacer par shared memory)
 -	gestion d'un segment de course par les fils
 -	transmission de la position au père
 -	représentation graphique de la position de chaque voiture et affichage par le père (le "contrôleur de course")
@@ -12,11 +12,12 @@ Fait :
 -	*explorer comment marche les sémaphores pour protéger l'accès au code accédant aux ressources partagées
 -	convertir le mécanisme de remontée d'information fils-père de pipe vers shmem (shared memory)
 -	gérer les deux segments supplémentaires
+-	gérer le nombre de tours à faire (simple)
 
 A faire :
--	gérer et afficher au niveau du contrôleur le meilleur temps du segment
--	gérer le nombre de tours à faire
+-	gérer le nombre de tours à faire (simple)
 -	gérer et afficher le nombre de tours faits
+-	gérer et afficher au niveau du père/contrôleur de course le meilleur temps du segment, pour chaque voiture individuellement, et globalement
 -	*explorer la gestion du temps précis (au niveau µs plutôt que seconde)
 -	adapter la gestion du temps à la µs dans le programme
 -	*explorer la lecture des fichiers
@@ -25,6 +26,7 @@ A faire :
 -	afficher la place actuelle des pilotes
 -	*lire et afficher le fichier des circuits
 -	*permettre à l'utilisateur de choisir un circuit
+-	gérer le nombre de tours à faire (en fonction du circuit choisi)
 -	*réfléchir à la structure de données nécessaire pour gérer le championnat sur toute l'année (pilotes x circuits)
 -	créer la structure championnat en mémoire et l'écrire dans un fichier
 -	afficher l'état actuel du championnat à l'écran
@@ -40,3 +42,4 @@ A faire :
 -	etc
 -	
 
+*: peut être fait indépendamment de l'intégration dans le programme principal
