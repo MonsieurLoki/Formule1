@@ -3,6 +3,7 @@
         "fcntl.h": "c",
         "types.h": "c",
         "ipc.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "string.h": "c"
     }
 }

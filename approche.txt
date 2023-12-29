@@ -19,27 +19,67 @@ Fait :
 -	gérer et afficher au niveau du père/contrôleur de course le meilleur temps du secteur, pour chaque voiture individuellement
 -   gérer et afficher au niveau du père/contrôleur de course le meilleur temps de chaque secteur et quelle voiture l'a fait
 -   afficher le temps de course total de chaque voiture/pilote
-
-A faire :
 -	afficher la place actuelle des cars/pilotes
 -	*explorer la lecture des fichiers
 -	*lire et afficher le fichier des pilotes
 -	*lire et afficher le fichier des circuits
 -	*permettre à l'utilisateur de choisir un circuit
--	gérer le nombre de tours à faire (en fonction du circuit choisi)
+-	gérer le nombre de tours à faire (le nombre de tours : le plus proche >= à 100 ou 300 km 
+    en fonction de la taille du circuit)
+
+A faire :
+
+-	assigner les pilotes dans la structure des voitures en mémoire partagée
 -	*réfléchir à la structure de données nécessaire pour gérer le championnat sur toute l'année (pilotes x circuits)
 -	créer la structure championnat en mémoire et l'écrire dans un fichier
 -	afficher l'état actuel du championnat à l'écran
 -	au début d'une course, lire le fichier championnat, et l'afficher
--	à la fin d'une course, attribuer les points en fonction de la place et afficher le championnat
--	écrire le championnat sur fichier
--	*permettre à l'utilisateur de choisir un type de course (Essai, Qualification, Sprint, Normal)
--	gérer une course de type Essai
--	gérer une course de type Qualification
--	inscrire sur fichier les résultats des Qualifications
--	gérer une course de type Sprint
+
 -	gérer une course de type Normale (avec positions initiales et update fichier championnat à la fin)
--	etc
--	
+    -	afficher le classement en temps réel (en fonction du temps de course total)    
+    -	Le premier classement est l’ordre sur la grille de départ
+    -	Le classement doit toujours être maintenu tout au long de la course (gérer les dépassements)
+    -	Indiquer la différence de temps avec la voiture qui précède
+    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture
+    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
+    -	Toujours savoir qui a le tour le plus rapide
+    -	Savoir si la voiture est out (abandon) ; dans ce cas, elle sera classée en fin de classement
+    -	Savoir si la voiture est aux stands (PIT), gérer le temps aux stands et faires sortir la voiture à sa place dans la course (généralement 2 ou 3 PIT par voitures)
+    -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. Dans le cas d’une course sprint, ce fichier déterminera l’ordre de départ de la course du dimanche.
+    -   les 10 premiers reçoivent des points (25, 20, 15, 10, 8, 6, 5, 3, 2, 1)
+
+-   *permettre à l'utilisateur de choisir un type de course (Essai, Qualification, Sprint, Normal)
+
+-   Lors des séances d’essais (P1, P2, P3) :
+    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture. Pour ce faire, vous devrez commencer par écrire un « générateur de temps » à l’aide du random. Le temps dans un secteur se situe entre 25 et 45 secondes, en gros.
+    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
+    -	Classer les voitures en fonction de leur tour complet le plus rapide
+    -	Indiquer la différence de temps avec la voiture qui précède
+    -	Savoir si une voiture est aux stands (P)
+    -	Savoir si une voiture est out (abandon de la séance)
+    -	Dans ces 2 derniers cas, on conserve toujours le meilleur temps de la voiture et celle-ci reste dans le classement
+    -	Conserver sur fichier le classement final à la fin de chaque séance ainsi que les meilleurs temps S1, S2 et S3 et le meilleur tour.
+
+-	gérer une course de type Qualification (Q1, Q2, Q3)
+    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture
+    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
+    -	Classer les voitures en fonction de leur tour complet le plus rapide
+    -	Indiquer la différence de temps avec la voiture qui précède
+    -	Savoir si une voiture est aux stands (P)
+    -	Savoir si une voitures est out (abandon de la séance)
+    -	Dans ces 2 derniers cas, on conserve toujours le meilleur temps de la voiture et celle-ci reste 
+        dans le classement
+    -	A la fin de Q1, il reste 15 voitures qualifiées pour Q2 et les 5 dernières sont placées à la fin de 
+        la grille de départ (places 16 à 20)
+    -	A la fin de Q2, il reste 10 voitures qualifiées pour Q3 et les 5 dernières sont placées dans les 
+        places 11 à 15 de la grille de départ
+    -	Le classement de Q3 attribue les places 1 à 10 de la grille de départ
+    -	Conserver sur fichier le classement final à la fin des 3 séances (ce sera l’ordre de départ pour la 
+        course sprint s’il y en a une ou pour la course du dimanche ), ainsi que les meilleurs temps en S1, 
+        S2, S3 et le meilleur tour.
+    -	inscrire sur fichier les résultats des Qualifications
+-	gérer une course de type Sprint
+    -   les 8 premiers reçoivent des points (dans l’ordre décroissant de 8 à 1).-   etc
+-   vérifier si les sémaphores ont été utilisés là où ils sont nécessaires (le sont-ils vraiment ici ?)
 
 *: peut être fait indépendamment de l'intégration dans le programme principal

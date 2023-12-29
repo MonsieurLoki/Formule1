@@ -14,6 +14,10 @@
 #include <time.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <locale.h>
+#include <wchar.h>
+#include <math.h>
+#include <stdbool.h>
 
 #define IPC_RESULT_ERROR (-1)
 #define NB_VOITURE 4
@@ -25,8 +29,6 @@
 #ifndef SHARED_MEMORY_H
 #define SHARED_MEMORY_H
 
-#include <stdbool.h>
-
 // attach a shared memory block
 // associated with filename
 // create it if it doesn't exist
@@ -35,7 +37,21 @@
 #define BLOCK_SIZE 4096
 #define FILENAME "cars.c"
 
+#define MAX_LINE_SIZE 1000 // Taille maximale d'une ligne dans le fichier CSV
+#define MAX_COLUMNS 10     // Nombre maximal de colonnes dans une ligne du CSV
+#define MAX_ROWS 100       // Nombre maximal de lignes dans le fichier CSV
+
+#define MAX_NAME_LENGTH 50
+#define MAX_DATE_LENGTH 11
+#define MAX_NATIONALITY_LENGTH 20
+
 #endif
+
+// nombre de courses qu'on a lu dans le fichier csv
+int nb_courses;
+
+// nombre de pilotes qu'on a lu dans le fichier csv
+int nb_pilotes;
 
 // definition of the car structure
 struct Car
@@ -53,7 +69,312 @@ struct Car
     int status;
 };
 
-char *char_status_desc[] = {"ready ", "Running", "Finished"};
+// Structure représentant une ligne du fichier CSV
+typedef struct
+{
+    int course;
+    char ville[MAX_LINE_SIZE];
+    char date[MAX_LINE_SIZE];
+    char pays[MAX_LINE_SIZE];
+    char nom_circuit[MAX_LINE_SIZE];
+    float taille_km;
+    char race[MAX_LINE_SIZE];
+    char circuit[MAX_LINE_SIZE];
+    char date_range[MAX_LINE_SIZE];
+} F1Race;
+
+F1Race races[MAX_ROWS];
+
+typedef struct
+{
+    int nb;
+    int num;
+    char prenom[MAX_NAME_LENGTH];
+    char nom[MAX_NAME_LENGTH];
+    char team[MAX_NAME_LENGTH];
+    char naissance[MAX_DATE_LENGTH];
+    char nationalite[MAX_NATIONALITY_LENGTH];
+} Pilote;
+
+Pilote pilotes[MAX_ROWS];
+
+int scores[MAX_ROWS][MAX_ROWS];
+
+int choisirCourse(F1Race races[], int num_races, int num_course)
+{
+    for (int i = 0; i < num_races; ++i)
+    {
+        if (races[i].course == num_course)
+        {
+            double nombre = 300 / races[i].taille_km;
+            double arrondi = ceil(nombre);
+            printf("\nDétails de la course numéro %d :\n", num_course);
+            printf("Ville : %s\n", races[i].ville);
+            printf("Date : %s\n", races[i].date);
+            printf("Pays : %s\n", races[i].pays);
+            printf("Nom du circuit : %s\n", races[i].nom_circuit);
+            printf("Taille (km) : %.3f\n", races[i].taille_km);
+            printf("Nombre de tours calculés : %.2f\n", arrondi);
+            return 1; // Course trouvée et affichée
+        }
+    }
+    return 0; // Aucune course trouvée
+}
+// generic functions ------------------------------------------------------------------------------------
+
+int strwlen(char *narrowStr)
+{
+    setlocale(LC_ALL, ""); // Set the locale to support wide characters
+
+    // const char *narrowStr = "Hello, world!";  // Your regular string
+    // const char *narrowStr = "Café";  // Your regular string
+    // const char *narrowStr = "Montréal";  // Your regular string
+    size_t maxWideSize = mbstowcs(NULL, narrowStr, 0); // Determine the required buffer size
+
+    if (maxWideSize != (size_t)-1)
+    {
+        wchar_t *wideStr = (wchar_t *)malloc((maxWideSize + 1) * sizeof(wchar_t));
+        if (wideStr)
+        {
+            mbstowcs(wideStr, narrowStr, maxWideSize + 1);
+
+            // Now wideStr contains the wide character string
+            // wprintf(L"%ls (len normal : %d, len wide : %d)\n", wideStr, strlen(narrowStr), wcslen(wideStr));
+            int wlen = wcslen(wideStr);
+
+            free(wideStr); // Don't forget to free the allocated memory
+            return wlen;
+        }
+    }
+    else
+    {
+        fprintf(stderr, "Error converting string to wide character string\n");
+    }
+
+    return -1;
+}
+
+char space0[] = "";
+char space1[] = " ";
+char space2[] = "  ";
+char space3[] = "   ";
+
+char *compensate_for_accents(char *str)
+{
+    int lg = strlen(str);
+    int wlg = strwlen(str);
+
+    switch (lg - wlg)
+    {
+    case 0:
+        return space0;
+    case 1:
+        return space1;
+    case 2:
+        return space2;
+    case 3:
+        return space3;
+    }
+}
+
+int lireCircuits(F1Race races[])
+{
+    // variable de type file pour gérer le fichier CSV
+    FILE *file;
+    // buffer pour être sûr qu'on a réservé la place suffisante (MAX_LINE_SIZE) pour être
+    // capable de lire en mémoire toute une ligne du fichier
+    char line[MAX_LINE_SIZE];
+    // le tableau pour contenir l'information du fichier, de façon structurée
+    // chaque élément de ce tableau contiendra une structure de type F1Race, càd
+    // avec les différentes propriété de cette structure
+    // par exemple, races[5].pays contiendra le pays de la course 5
+    // il peut y avoir maximum MAX_ROWS éléments dans ce tableau
+    // F1Race races[MAX_ROWS]; // Tableau de structures F1Race
+
+    // Ouvrir le fichier CSV en mode lecture
+    file = fopen("listCircuit.csv", "r");
+    // on s'assure que le fichier a été ouvert sans problème
+    if (file == NULL)
+    {
+        printf("Impossible d'ouvrir le fichier.\n");
+        return 1;
+    }
+
+    // au départ, il y a 0 course de déjà lue
+    int num_races = 0;
+
+    // Ignorer la première ligne (en-têtes)
+    // on lit dans le buffer line une ligne pour rien
+    fgets(line, MAX_LINE_SIZE, file);
+
+    // Lire et stocker chaque ligne du fichier CSV dans la structure
+    while (fgets(line, MAX_LINE_SIZE, file) != NULL && num_races < MAX_ROWS)
+    {
+        F1Race race;
+        race.course = -1; // Initialisation
+
+        // Utilise strtok pour séparer les valeurs par point-virgule
+        char *token = strtok(line, ";");
+
+        // Stocker chaque valeur dans la structure
+        int column = 0;
+        while (token != NULL && column < MAX_COLUMNS)
+        {
+            switch (column)
+            {
+            case 0:
+                // Convertit la chaîne de caractères token en un entier à l'aide de la fonction atoi() et stocke la valeur dans le champ course de la structure F1Race
+                race.course = atoi(token);
+                break;
+            case 1:
+                // Copie la chaîne de caractères token dans les champs correspondants de la structure F1Race (ville, date, pays, etc.) en utilisant strcpy() pour la copie.
+                strcpy(race.ville, token);
+                break;
+            case 2:
+                strcpy(race.date, token);
+                break;
+            case 3:
+                strcpy(race.pays, token);
+                break;
+            case 4:
+                strcpy(race.nom_circuit, token);
+                break;
+            case 5:
+                // Convertit la chaîne de caractères token en un nombre flottant (à virgule flottante) à l'aide de la fonction atof() et stocke la valeur dans le champ taille_km de la structure F1Race
+                race.taille_km = atof(token);
+                break;
+            case 6:
+                strcpy(race.race, token);
+                break;
+            case 7:
+                strcpy(race.circuit, token);
+                break;
+            case 8:
+                strcpy(race.date_range, token);
+                break;
+            }
+            // trouve le prochain morceau de texte dans la chaîne, en utilisant le point-virgule comme séparateur, pour une découpe ultérieure.
+            // La fonction strtok est utilisée pour découper une chaîne de caractères en "tokens" (morceaux) basés sur un délimiteur spécifié.
+            token = strtok(NULL, ";");
+            column++;
+        }
+
+        // Stocker la ligne dans le tableau de structures F1Race
+        // stocke la structure de données représentant une course dans le tableau races, puis incrémente le compteur pour la prochaine course à enregistrer.
+        // voici en plusieurs étapes : F1Race tempRace = race;
+        //    races[num_races] = tempRace;
+        //    num_races++;
+        races[num_races++] = race;
+    }
+
+    // Fermer le fichier
+    fclose(file);
+    return num_races;
+}
+int afficherCircuits(F1Race races[], int num_races)
+{
+    // Affichage des en-têtes du tableau avec des largeurs de champ fixes
+    printf("%-6s| %-18s| %-8s| %-20s| %-35s| %-11s\n",
+           "Course", "Ville", "Date", "Pays", "Nom du circuit", "Taille (km)");
+
+    // Affichage des séparateurs
+    printf("------|-------------------|---------|---------------------|------------------------------------|------------|\n");
+
+    // Affichage des données de chaque course
+    for (int i = 0; i < num_races; ++i)
+    {
+        printf("%-6d| %-18s%s| %-8s%s| %-20s%s| %-35s%s| %-11.3f|\n",
+               races[i].course, races[i].ville, compensate_for_accents(races[i].ville), races[i].date, compensate_for_accents(races[i].date), races[i].pays, compensate_for_accents(races[i].pays), races[i].nom_circuit, compensate_for_accents(races[i].nom_circuit), races[i].taille_km);
+    }
+
+    return 0;
+}
+
+int lirePilotes(Pilote circuits[])
+{
+    FILE *file;
+    char line[MAX_LINE_SIZE];
+
+    // Ouvrir le fichier CSV en mode lecture
+    file = fopen("listPilotes.csv", "r");
+    if (file == NULL)
+    {
+        printf("Impossible d'ouvrir le fichier.\n");
+        return 0;
+    }
+
+    int num_circuits = 0;
+
+    // Ignorer la première ligne (en-têtes)
+    fgets(line, MAX_LINE_SIZE, file);
+
+    // Lire et stocker chaque ligne du fichier CSV dans la structure
+    while (fgets(line, MAX_LINE_SIZE, file) != NULL && num_circuits < NB_VOITURE)
+    {
+        Pilote circuit;
+        circuit.nb = -1; // Initialisation
+
+        // Utilise strtok pour séparer les valeurs par point-virgule
+        char *token = strtok(line, ";");
+
+        // Stocker chaque valeur dans la structure
+        int column = 0;
+        while (token != NULL && column < 7)
+        {
+            switch (column)
+            {
+            case 0:
+                circuit.nb = atoi(token);
+                break;
+            case 1:
+                circuit.num = atoi(token);
+                break;
+            case 2:
+                strcpy(circuit.prenom, token);
+                break;
+            case 3:
+                strcpy(circuit.nom, token);
+                break;
+            case 4:
+                strcpy(circuit.team, token);
+                break;
+            case 5:
+                strcpy(circuit.naissance, token);
+                break;
+            case 6:
+                strcpy(circuit.nationalite, token);
+                break;
+            }
+            token = strtok(NULL, ";");
+            column++;
+        }
+
+        // Stocker la ligne dans le tableau de structures Pilote
+        circuits[num_circuits++] = circuit;
+    }
+
+    // Fermer le fichier
+    fclose(file);
+
+    return num_circuits;
+}
+
+void afficherPilotes(Pilote pilotes[], int num_pilotes)
+{
+    printf("%-2s | %-3s | %-10s | %-13s | %-13s\n",
+           "Nb", "Num", "Prénom", "Nom", "Team");
+    printf("---|-----|-----------|---------------|---------------|\n");
+
+    // Affichage des données de chaque pilote sous forme de tableau
+    for (int i = 0; i < num_pilotes; ++i)
+    {
+        printf("%-2d | %-3d | %-9s%s | %-13s%s | %-13s%s |\n",
+               pilotes[i].nb, pilotes[i].num, pilotes[i].prenom, compensate_for_accents(pilotes[i].prenom), pilotes[i].nom, compensate_for_accents(pilotes[i].nom), pilotes[i].team, compensate_for_accents(pilotes[i].team));
+    }
+}
+
+int classement[NB_VOITURE];
+char *char_status_desc[] = {"ready", "Running", "Finished"};
 
 // definition of the Best_sector times
 struct Best_sector
@@ -228,7 +549,8 @@ void dessiner(int car_nr, int position)
         secteur_3[positionEtoile] = '*';
     }
 
-    printf("%3d) voiture, status: %s, sect:%2d, pos:%3d, tour:%d ", car_nr, char_status_desc[status], secteur_courant, position, tour_courant);
+    printf("%3d) voiture, pilote : %-15s, status: %- 8s, sect:%2d, pos:%3d, tour:%d ",
+           car_nr, shmem_data->cars[car_nr].pilote, char_status_desc[status], secteur_courant, position, tour_courant);
 
     printf("%s%s%s\n", secteur_1, secteur_2, secteur_3);
 }
@@ -281,6 +603,108 @@ int toutesLesVoituresOntTermine()
     }
     return 1;
 }
+
+// returns 1 if car a has a better ranking than car b
+int estMeilleurQue(int a, int b)
+{
+    struct Car voit_a;
+    struct Car voit_b;
+
+    voit_a = shmem_data->cars[a];
+    voit_b = shmem_data->cars[b];
+
+    if (voit_a.status == STATUS_FINISHED && voit_b.status == STATUS_FINISHED)
+    {
+        if (voit_a.total_time_de_la_course_ms < voit_b.total_time_de_la_course_ms)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    // if other cases...
+
+    if (voit_a.status == STATUS_FINISHED && voit_b.status != STATUS_FINISHED)
+    {
+        return 1;
+    }
+
+    if (voit_a.status != STATUS_FINISHED && voit_b.status == STATUS_FINISHED)
+    {
+        return 0;
+    }
+    // here we are sure that both status are different than the finished status
+    if (voit_a.tour_courant != voit_b.tour_courant)
+    {
+        if (voit_a.tour_courant > voit_b.tour_courant)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        // here we are sure that the tour_courant are the same
+        if (voit_a.secteur_courant != voit_b.secteur_courant)
+        {
+            if (voit_a.secteur_courant > voit_b.secteur_courant)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            // here we are sur that the tour_courant and the secteur_courant are the same
+            if (voit_a.position > voit_b.position)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+}
+
+void classer()
+{
+    for (int i = 0; i < NB_VOITURE; i++)
+    {
+        classement[i] = i;
+    }
+    for (int i = 0; i < NB_VOITURE - 1; i++)
+    {
+        for (int j = i + 1; j < NB_VOITURE; j++)
+        {
+            if (estMeilleurQue(classement[j], classement[i]))
+            {
+                int temp = classement[i];
+                classement[i] = classement[j];
+                classement[j] = temp;
+            }
+        }
+    }
+}
+
+void afficherClassement()
+{
+    classer();
+    for (int i = 0; i < NB_VOITURE; i++)
+    {
+        printf("pos %d : car %d pilote %-13s \n", i + 1, classement[i], shmem_data->cars[classement[i]].pilote);
+    }
+}
+
 void monitorerVoitures()
 {
     int iter = 0;
@@ -306,6 +730,8 @@ void monitorerVoitures()
         {
             dessiner(i, shmem_data->cars[i].position);
         }
+
+        afficherClassement();
 
         printf("best time for sector 1: time : %6.3f, car : %d \n", (shmem_data->best_sectors[1].time_ms * 1.0) / 1000, shmem_data->best_sectors[1].car_nr);
         printf("best time for sector 2: time : %6.3f, car : %d \n", (shmem_data->best_sectors[2].time_ms * 1.0) / 1000, shmem_data->best_sectors[2].car_nr);
@@ -365,6 +791,51 @@ void initialisation_best_sectors_time()
     shmem_data->best_sectors[3].time_ms = 0;
 }
 
+// cette fonction assigne les pilotes aux voitures
+void assignerLesPilotesAuxVoitures()
+{
+    for (int i = 0; i < NB_VOITURE; i++)
+    {
+        strcpy(shmem_data->cars[i].pilote, pilotes[i].nom);
+    }
+}
+
+void init_scores()
+{
+    for (int i = 0; i < nb_pilotes; i++)
+    {
+        for (int j = 0; j < nb_courses; j++)
+        {
+            scores[i][j] = 0;
+        }
+    }
+}
+
+void afficher_scores()
+{
+
+    char short_name[30];
+
+    printf("\n");
+    printf("          |");
+    for (int i = 0; i < nb_courses; i++)
+    {
+        strncpy(short_name, races[i].ville, 6);
+        short_name[5] = '\0';
+        printf("%-5s|", short_name);
+    }
+    printf("\n");
+    for (int i = 0; i < nb_pilotes; i++)
+    {
+        printf("%10s|", shmem_data->cars[i].pilote);
+        for (int j = 0; j < nb_courses; j++)
+        {
+            printf("%5d|", scores[i][j]);
+        }
+        printf("\n");
+    }
+}
+
 int main()
 {
     destroy_shmem();
@@ -379,6 +850,36 @@ int main()
     // mapping the Shmem_data structure on the shared memory block
     shmem_data = (Shmem_data *)block;
     initialisation_best_sectors_time();
+
+    nb_courses = lireCircuits(races);
+    afficherCircuits(races, nb_courses);
+
+    // Demander à l'utilisateur de choisir une course
+    int course_demandee;
+    printf("Entrez le numéro de la course que vous souhaitez afficher : ");
+    // scanf("%d", &course_demandee);
+    course_demandee = 2;
+
+    // Afficher les détails de la course sélectionnée
+    int resultat = choisirCourse(races, nb_courses, course_demandee);
+    if (!resultat)
+    {
+        printf("La course demandée n'a pas été trouvée.\n");
+        return 1; // Quitter le programme si la course n'est pas trouvée
+    }
+
+    // F1Race races[MAX_ROWS];
+    // int num_races = lireEnMemoire(races);
+    // afficherCircuits(races, num_races);
+    printf("\n\n");
+    nb_pilotes = lirePilotes(pilotes);
+    afficherPilotes(pilotes, nb_pilotes);
+    assignerLesPilotesAuxVoitures();
+    init_scores();
+    afficher_scores();
+
+    // exit(0);
+
     pid_t pid[NB_VOITURE];
     for (int i = 0; i < NB_VOITURE; i++)
     {
