@@ -33,7 +33,7 @@ To install (first time):
 # Sample installation steps
 git clone https://github.com/MonsieurLoki/Formule1.git
 cd Formule1
-gcc cars.c -o cars
+gcc cars.c -lm -o cars
 ```
 
 
@@ -43,7 +43,7 @@ To update the code :
 # Sample installation steps
 # cd ../Formule1
 git pull 
-gcc cars.c -o cars
+gcc cars.c -lm -o cars
 ```
 
 

@@ -26,27 +26,29 @@ Fait :
 -	*permettre à l'utilisateur de choisir un circuit
 -	gérer le nombre de tours à faire (le nombre de tours : le plus proche >= à 100 ou 300 km 
     en fonction de la taille du circuit)
+-	assigner les pilotes dans la structure des voitures en mémoire partagée
+-	*réfléchir à la structure de données nécessaire pour gérer le championnat sur toute l'année (pilotes x circuits)
+-	afficher l'état actuel du championnat à l'écran
+-	créer la structure championnat en mémoire et l'écrire dans un fichier
+-	au début d'une course, lire le fichier championnat, et l'afficher
 
 A faire :
 
--	assigner les pilotes dans la structure des voitures en mémoire partagée
--	*réfléchir à la structure de données nécessaire pour gérer le championnat sur toute l'année (pilotes x circuits)
--	créer la structure championnat en mémoire et l'écrire dans un fichier
--	afficher l'état actuel du championnat à l'écran
--	au début d'une course, lire le fichier championnat, et l'afficher
 
 -	gérer une course de type Normale (avec positions initiales et update fichier championnat à la fin)
     -	afficher le classement en temps réel (en fonction du temps de course total)    
-    -	Le premier classement est l’ordre sur la grille de départ
     -	Le classement doit toujours être maintenu tout au long de la course (gérer les dépassements)
-    -	Indiquer la différence de temps avec la voiture qui précède
     -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture
     -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
-    -	Toujours savoir qui a le tour le plus rapide
+    -   les 10 premiers reçoivent des points (25, 20, 15, 10, 8, 6, 5, 3, 2, 1)
+    -	Conserver sur fichier le classement final
+
+    -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. Dans le cas d’une course sprint, ce fichier déterminera l’ordre de départ de la course du dimanche.
+    -	Indiquer la différence de temps avec la voiture qui précède
     -	Savoir si la voiture est out (abandon) ; dans ce cas, elle sera classée en fin de classement
     -	Savoir si la voiture est aux stands (PIT), gérer le temps aux stands et faires sortir la voiture à sa place dans la course (généralement 2 ou 3 PIT par voitures)
-    -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. Dans le cas d’une course sprint, ce fichier déterminera l’ordre de départ de la course du dimanche.
-    -   les 10 premiers reçoivent des points (25, 20, 15, 10, 8, 6, 5, 3, 2, 1)
+    -	Le premier classement est l’ordre sur la grille de départ
+    -	Toujours savoir qui a le tour le plus rapide
 
 -   *permettre à l'utilisateur de choisir un type de course (Essai, Qualification, Sprint, Normal)
 

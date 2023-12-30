@@ -49,6 +49,7 @@
 
 // nombre de courses qu'on a lu dans le fichier csv
 int nb_courses;
+int course_demandee;
 
 // nombre de pilotes qu'on a lu dans le fichier csv
 int nb_pilotes;
@@ -100,25 +101,44 @@ Pilote pilotes[MAX_ROWS];
 
 int scores[MAX_ROWS][MAX_ROWS];
 
-int choisirCourse(F1Race races[], int num_races, int num_course)
+void sauvegarderScores(int nb_pilotes, int nb_courses)
 {
-    for (int i = 0; i < num_races; ++i)
+    FILE *file;
+    file = fopen("scores.csv", "w");
+
+    if (file == NULL)
     {
-        if (races[i].course == num_course)
-        {
-            double nombre = 300 / races[i].taille_km;
-            double arrondi = ceil(nombre);
-            printf("\nDétails de la course numéro %d :\n", num_course);
-            printf("Ville : %s\n", races[i].ville);
-            printf("Date : %s\n", races[i].date);
-            printf("Pays : %s\n", races[i].pays);
-            printf("Nom du circuit : %s\n", races[i].nom_circuit);
-            printf("Taille (km) : %.3f\n", races[i].taille_km);
-            printf("Nombre de tours calculés : %.2f\n", arrondi);
-            return 1; // Course trouvée et affichée
-        }
+        printf("Impossible d'ouvrir le fichier.\n");
+        return;
     }
-    return 0; // Aucune course trouvée
+
+    for (int i = 0; i < nb_pilotes; ++i)
+    {
+        for (int j = 0; j < nb_courses; ++j)
+        {
+            fprintf(file, "%d", scores[i][j]);
+            if (j != nb_courses - 1)
+            {
+                fprintf(file, ",");
+            }
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+}
+
+void afficherDetailsCourse(int num_course)
+{
+    double nombre = 300 / races[num_course].taille_km;
+    double arrondi = ceil(nombre);
+    printf("\nDétails de la course numéro %d :\n", num_course);
+    printf("Ville : %s\n", races[num_course].ville);
+    printf("Date : %s\n", races[num_course].date);
+    printf("Pays : %s\n", races[num_course].pays);
+    printf("Nom du circuit : %s\n", races[num_course].nom_circuit);
+    printf("Taille (km) : %.3f\n", races[num_course].taille_km);
+    printf("Nombre de tours calculés : %.2f\n\n", arrondi);
 }
 // generic functions ------------------------------------------------------------------------------------
 
@@ -179,6 +199,7 @@ char *compensate_for_accents(char *str)
 
 int lireCircuits(F1Race races[])
 {
+    char filename[] = "listPilotes.csv";
     // variable de type file pour gérer le fichier CSV
     FILE *file;
     // buffer pour être sûr qu'on a réservé la place suffisante (MAX_LINE_SIZE) pour être
@@ -196,7 +217,7 @@ int lireCircuits(F1Race races[])
     // on s'assure que le fichier a été ouvert sans problème
     if (file == NULL)
     {
-        printf("Impossible d'ouvrir le fichier.\n");
+        printf("Impossible d'ouvrir le fichier : %s\n", filename);
         return 1;
     }
 
@@ -292,15 +313,19 @@ int afficherCircuits(F1Race races[], int num_races)
 
 int lirePilotes(Pilote circuits[])
 {
+
+    char filename[] = "listPilotes.csv";
+
     FILE *file;
     char line[MAX_LINE_SIZE];
 
     // Ouvrir le fichier CSV en mode lecture
-    file = fopen("listPilotes.csv", "r");
+
+    file = fopen(filename, "r");
     if (file == NULL)
     {
-        printf("Impossible d'ouvrir le fichier.\n");
-        return 0;
+        printf("Impossible d'ouvrir le fichier : %s\n", filename);
+        exit(1);
     }
 
     int num_circuits = 0;
@@ -713,6 +738,7 @@ void monitorerVoitures()
         printf("\n");
         iter++;
 
+        printf("%3d) race %d:%s - nb tours: %d \n", iter, races[course_demandee].course, races[course_demandee].ville, NB_TOUR);
         for (int i = 0; i < NB_VOITURE; i++)
         {
             int secteur_courant = shmem_data->cars[i].secteur_courant;
@@ -722,8 +748,8 @@ void monitorerVoitures()
             int time_sector3 = shmem_data->cars[i].time_sector3;
             int best_tour_time = shmem_data->cars[i].best_tour_time_ms;
             int temps_total = shmem_data->cars[i].total_time_de_la_course_ms;
-            printf("%3d) voiture %2d, secteur courant : %d, temps secteur1 : %6.3f, temps secteur2 : %6.3f, temps secteur3 : %6.3f, best tour time : %6.3f, temps total : %6.3f \n",
-                   iter, i, secteur_courant, (time_sector1 * 1.0) / 1000, (time_sector2 * 1.0) / 1000, (time_sector3 * 1.0) / 1000, (best_tour_time * 1.0) / 1000, (temps_total * 1.0) / 1000);
+            printf("voiture %2d, secteur courant: %d, temps secteur1: %6.3f, secteur2: %6.3f, secteur3: %6.3f, best tour time: %6.3f, temps total: %6.3f \n",
+                   i, secteur_courant, (time_sector1 * 1.0) / 1000, (time_sector2 * 1.0) / 1000, (time_sector3 * 1.0) / 1000, (best_tour_time * 1.0) / 1000, (temps_total * 1.0) / 1000);
         }
 
         for (int i = 0; i < NB_VOITURE; i++)
@@ -836,6 +862,54 @@ void afficher_scores()
     }
 }
 
+void lire_scores()
+{
+
+    char buffer[1024];
+
+    FILE *file = fopen("scores.csv", "r");
+    if (file == NULL)
+    {
+        perror("Error opening file");
+        exit(1);
+    }
+
+    int line = 0;
+    while (fgets(buffer, sizeof(buffer), file))
+    {
+        // printf("line %d : %s\n",line, buffer);
+
+        char *token = strtok(buffer, ",");
+
+        int i = 0; // indice du token qu'on vient de lire
+        scores[line][i] = atoi(token);
+        // printf("1er token : %s\n", token);
+
+        while (token != NULL)
+        {
+            token = strtok(NULL, ",");
+            if (token != NULL)
+            {
+                // printf("token suivant : %s\n", token);
+                i++;
+                scores[line][i] = atoi(token);
+            }
+        }
+
+        line++;
+    }
+    fclose(file);
+}
+
+void donner_les_points()
+{
+    int points[] = {25, 20, 15, 10, 8, 6, 5, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (int i = 0; i < NB_VOITURE; i++)
+    {
+        scores[classement[i]][course_demandee] = points[i];
+    }
+}
+
 int main()
 {
     destroy_shmem();
@@ -853,32 +927,27 @@ int main()
 
     nb_courses = lireCircuits(races);
     afficherCircuits(races, nb_courses);
+    printf("\n");
 
-    // Demander à l'utilisateur de choisir une course
-    int course_demandee;
-    printf("Entrez le numéro de la course que vous souhaitez afficher : ");
-    // scanf("%d", &course_demandee);
-    course_demandee = 2;
-
-    // Afficher les détails de la course sélectionnée
-    int resultat = choisirCourse(races, nb_courses, course_demandee);
-    if (!resultat)
-    {
-        printf("La course demandée n'a pas été trouvée.\n");
-        return 1; // Quitter le programme si la course n'est pas trouvée
-    }
-
-    // F1Race races[MAX_ROWS];
-    // int num_races = lireEnMemoire(races);
-    // afficherCircuits(races, num_races);
-    printf("\n\n");
     nb_pilotes = lirePilotes(pilotes);
     afficherPilotes(pilotes, nb_pilotes);
     assignerLesPilotesAuxVoitures();
-    init_scores();
-    afficher_scores();
+    printf("\n");
 
-    // exit(0);
+    // init_scores();
+    lire_scores();
+    afficher_scores();
+    printf("\n");
+
+    // Demander à l'utilisateur de choisir une course
+    printf("Entrez le numéro de la course que vous souhaitez afficher : ");
+    scanf("%d", &course_demandee);
+    // course_demandee = 2;
+
+    course_demandee--;
+
+    // Afficher les détails de la course sélectionnée
+    afficherDetailsCourse(course_demandee);
 
     pid_t pid[NB_VOITURE];
     for (int i = 0; i < NB_VOITURE; i++)
@@ -886,6 +955,11 @@ int main()
         pid[i] = lancerVoiture(i);
     }
     monitorerVoitures();
+
+    donner_les_points();
+    afficher_scores();
+    sauvegarderScores(nb_pilotes, nb_courses);
+
     detach_memory_block(block);
 
     destroy_shmem();
