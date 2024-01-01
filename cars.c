@@ -242,6 +242,7 @@ char *compensate_for_accents(char *str)
     case 3:
         return space3;
     }
+    return space0;
 }
 
 int lireCircuits(F1Race races[])
@@ -582,7 +583,7 @@ int gererSecteur(int car_nr, int nr_secteur)
     return dureeSecteur_ms;
 }
 
-void dessiner(int car_nr, int position)
+void dessinerSecteur(int car_nr, int position)
 {
     int status = shmem_data->cars[car_nr].status;
     int secteur_courant = shmem_data->cars[car_nr].secteur_courant;
@@ -629,8 +630,13 @@ void dessiner(int car_nr, int position)
         secteur_3[positionEtoile] = '*';
     }
 
-    printf("voiture %3d - %-15s  %- 8s, tour:%d ",
-           car_nr, shmem_data->cars[car_nr].pilote, char_status_desc[status], tour_courant);
+    printf("voiture %3d - %-12s%s  , %10s%s,  tour:%d ",
+           car_nr,
+           shmem_data->cars[car_nr].pilote,
+           compensate_for_accents(shmem_data->cars[car_nr].pilote),
+           char_status_desc[status],
+           compensate_for_accents(char_status_desc[status]),
+           tour_courant);
 
     printf("%s%s%s\n", secteur_1, secteur_2, secteur_3);
 }
@@ -730,28 +736,13 @@ int estMeilleurQue(int a, int b)
     else
     {
         // here we are sure that the tour_courant are the same
-        if (voit_a.secteur_courant != voit_b.secteur_courant)
+        if (voit_a.total_time_de_la_course_ms < voit_b.total_time_de_la_course_ms)
         {
-            if (voit_a.secteur_courant > voit_b.secteur_courant)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
+            return 1;
         }
         else
         {
-            // here we are sur that the tour_courant and the secteur_courant are the same
-            if (voit_a.position > voit_b.position)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
+            return 0;
         }
     }
 }
@@ -780,9 +771,9 @@ void afficherClassement()
 {
     classer();
 
-    char *separ = "+---+------------------+---+---+----+-------+---------+-------+-------+-------+--------+-------+-------+";
-    char *head1 = "|   |                  |Car|Lap|Sect|Pos in |Status   |Sector |Sector |Sector |Total   |Best   |       |";
-    char *head2 = "|Pos|Pilot             |Nr |Nr |Nr  |sect(%)|Car      |   1   |   2   |   3   |Time    |Lap    |Delta  |";
+    char *separ = "+---+------------------+---+---+----+-------+---------+-------+-------+-------+--------+-------+--------+";
+    char *head1 = "|   |                  |Car|Lap|Sect|Pos in |Status   |Sector |Sector |Sector |Total   |Best   |        |";
+    char *head2 = "|Pos|Pilot             |Nr |Nr |Nr  |sect(%)|Car      |   1   |   2   |   3   |Time    |Lap    |Delta   |";
 
     printf("%s\n", separ);
     printf("%s\n", head1);
@@ -803,22 +794,39 @@ void afficherClassement()
         int time_sector2 = shmem_data->cars[classement[i]].time_sector2;
         int time_sector3 = shmem_data->cars[classement[i]].time_sector3;
         int best_tour_time = shmem_data->cars[classement[i]].best_tour_time_ms;
-        printf("|%2d|pilote %-12s|%2d |%3d|%3d | %3d%%   |%9s|",
+        printf("| %2d|pilote %-11s%s|%2d |%3d|%3d | %3d%%  |%9s|",
                i + 1,
                shmem_data->cars[classement[i]].pilote,
+               compensate_for_accents(shmem_data->cars[classement[i]].pilote),
                shmem_data->cars[classement[i]].car_nr,
                tour_courant,
                secteur_courant,
                position,
                status_desc);
 
-        printf("%7.3f|%7.3f|%7.3f|%8.3f|%7.3f|+%6.3f|\n",
+        printf("%7.3f|%7.3f|%7.3f|%8.3f|%7.3f|",
                (time_sector1 * 1.0) / 1000,
                (time_sector2 * 1.0) / 1000,
                (time_sector3 * 1.0) / 1000,
                (temps_total * 1.0) / 1000,
-               (best_tour_time * 1.0) / 1000),
-            (difference * 1.0) / 1000;
+               (best_tour_time * 1.0) / 1000);
+
+        if (i == 0)
+        {
+            printf("%8.3f|\n", (temps_total * 1.0) / 1000);
+        }
+        else
+        {
+            if (shmem_data->cars[classement[0]].tour_courant == shmem_data->cars[classement[i]].tour_courant &&
+                shmem_data->cars[classement[0]].status == shmem_data->cars[classement[i]].status)
+            {
+                printf("+%7.3f|\n", (difference * 1.0) / 1000);
+            }
+            else
+            {
+                printf("   -    |\n");
+            }
+        }
     }
     printf("%s\n", separ);
     printf("\n");
@@ -828,7 +836,7 @@ void afficherSecteurs()
 {
     for (int i = 0; i < NB_VOITURE; i++)
     {
-        dessiner(i, shmem_data->cars[i].position);
+        dessinerSecteur(i, shmem_data->cars[i].position);
     }
     printf("\n");
 }
@@ -973,13 +981,13 @@ void reset_scores()
     }
 }
 
-void afficher_scores()
+void afficherScores()
 {
 
     char short_name[30];
 
     printf("\n");
-    printf("          |");
+    printf("            |");
     for (int i = 0; i < nb_courses; i++)
     {
         strncpy(short_name, races[i].ville, 6);
@@ -989,7 +997,7 @@ void afficher_scores()
     printf("\n");
     for (int i = 0; i < nb_pilotes; i++)
     {
-        printf("%10s|", shmem_data->cars[i].pilote);
+        printf("%-12s%s|", shmem_data->cars[i].pilote, compensate_for_accents(shmem_data->cars[i].pilote));
         for (int j = 0; j < nb_courses; j++)
         {
             printf("%5d|", scores[i][j]);
@@ -1068,7 +1076,7 @@ void init_scores()
 {
     // reset_scores();
     lire_scores();
-    // afficher_scores();
+    // afficherScores();
     // printf("\n");
 }
 
@@ -1167,15 +1175,16 @@ void do_the_race()
 {
     init_shmem_for_new_race();
 
-    pid_t pid[NB_VOITURE];
+    // pid_t pid[NB_VOITURE];
     for (int i = 0; i < NB_VOITURE; i++)
     {
-        pid[i] = lancerVoiture(i);
+        // pid[i] = lancerVoiture(i);
+        lancerVoiture(i);
     }
     monitorerVoitures();
 
     donner_les_points();
-    // afficher_scores();
+    // afficherScores();
     sauvegarderScores(nb_pilotes, nb_courses);
 }
 
@@ -1227,7 +1236,7 @@ void menu()
             break;
         case '5':
             clear_screen();
-            afficher_scores();
+            afficherScores();
             break;
         case '9':
             do_the_race();
