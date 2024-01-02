@@ -32,6 +32,7 @@ Fait :
 -	créer la structure championnat en mémoire et l'écrire dans un fichier
 -	au début d'une course, lire le fichier championnat, et l'afficher
 -   *permettre à l'utilisateur de choisir un type de course (Essai, Qualification, Sprint, Normal)
+-   calculer nombre de tours par circuits (pour arriver à environ 300km par course)
 
 -	gérer une course de type Normale (avec positions initiales et update fichier championnat à la fin)
     -	afficher le classement en temps réel (en fonction du temps de course total)    
@@ -44,9 +45,17 @@ Fait :
     -   implémenter un accélérateur de temps
     -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. 
 
-A faire :
+-   gérer les séances d’essais (P1, P2, P3) :
+    -   60 min max
+    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture. Pour ce faire, vous devrez commencer par écrire un « générateur de temps » à l’aide du random. Le temps dans un secteur se situe entre 25 et 45 secondes, en gros.
+    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
 
--   calculer nombre de tours par circuits (pour arriver à environ 300km par course)
+-	gérer une course de type Qualification (Q1, Q2, Q3)
+    -   Q1 : 18min; Q2 : 15 min; Q3 : 12 min
+    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture
+    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
+
+A faire :
 
 -	pour  course de type Normale
     -	Toujours savoir qui a le tour le plus rapide
@@ -55,10 +64,7 @@ A faire :
     -	Savoir si la voiture est aux stands (PIT), gérer le temps aux stands et faires sortir la voiture à sa place dans la course (généralement 2 ou 3 PIT par voitures)
     -	Le premier classement est l’ordre sur la grille de départ
 
--   gérer les séances d’essais (P1, P2, P3) :
-    -   60 min max
-    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture. Pour ce faire, vous devrez commencer par écrire un « générateur de temps » à l’aide du random. Le temps dans un secteur se situe entre 25 et 45 secondes, en gros.
-    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
+-   pour les séances d'essais (P1, P2, P3)
     -	Classer les voitures en fonction de leur tour complet le plus rapide
     -	Indiquer la différence de temps avec la voiture qui précède
     -	Savoir si une voiture est aux stands (P)
@@ -66,15 +72,12 @@ A faire :
     -	Dans ces 2 derniers cas, on conserve toujours le meilleur temps de la voiture et celle-ci reste dans le classement
     -	Conserver sur fichier le classement final à la fin de chaque séance ainsi que les meilleurs temps S1, S2 et S3 et le meilleur tour.
 
--	gérer une course de type Qualification (Q1, Q2, Q3)
-    -   Q1 : 18min; Q2 : 15 min; Q3 : 12 min
+-	pour une course de type Qualification (Q1, Q2, Q3)
+    -	A la fin de Q2, il reste 10 voitures qualifiées pour Q3 et les 5 dernières sont placées dans les 
     -	A la fin de Q1, il reste 15 voitures qualifiées pour Q2 et les 5 dernières sont placées à la fin de 
         la grille de départ (places 16 à 20)
-    -	A la fin de Q2, il reste 10 voitures qualifiées pour Q3 et les 5 dernières sont placées dans les 
         places 11 à 15 de la grille de départ
     -	Le classement de Q3 attribue les places 1 à 10 de la grille de départ
-    -	Relever les temps dans les 3 secteurs à chaque passage pour chaque voiture
-    -	Toujours savoir qui a le meilleur temps dans chacun des secteurs
     -	Classer les voitures en fonction de leur tour complet le plus rapide
     -	Indiquer la différence de temps avec la voiture qui précède
     -	Savoir si une voiture est aux stands (P)

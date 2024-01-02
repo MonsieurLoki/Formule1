@@ -22,8 +22,8 @@
 #include <termios.h> // for getchar()
 
 #define IPC_RESULT_ERROR (-1)
-#define NB_VOITURE 10
-#define NB_TOUR 2
+#define NB_VOITURE 20
+#define NB_TOUR 50
 #define STATUS_FINISHED 2
 #define STATUS_RUNNING 1
 #define STATUS_READY 0
@@ -67,6 +67,9 @@ int nb_courses;
 // nombre de pilotes qu'on a lu dans le fichier csv
 int nb_pilotes;
 
+// temps total passé dans la course courante
+int total_race_time_ms;
+
 // definition of the car structure
 struct Car
 {
@@ -95,6 +98,7 @@ typedef struct
     char race[MAX_LINE_SIZE];
     char circuit[MAX_LINE_SIZE];
     char date_range[MAX_LINE_SIZE];
+    int nb_tour;
 } F1Race;
 
 F1Race races[MAX_ROWS];
@@ -328,6 +332,10 @@ int lireCircuits(F1Race races[])
             column++;
         }
 
+        // on peut calculer le nombre de tours qu'il faut en fonction de la longueur du circuit
+        race.nb_tour = 300 / race.taille_km;
+        race.nb_tour = ceil(race.nb_tour);
+
         // Stocker la ligne dans le tableau de structures F1Race
         // stocke la structure de données représentant une course dans le tableau races, puis incrémente le compteur pour la prochaine course à enregistrer.
         // voici en plusieurs étapes : F1Race tempRace = race;
@@ -343,17 +351,23 @@ int lireCircuits(F1Race races[])
 int afficherCircuits(F1Race races[], int num_races)
 {
     // Affichage des en-têtes du tableau avec des largeurs de champ fixes
-    printf("%-6s| %-18s| %-8s| %-20s| %-35s| %-11s\n",
-           "Course", "Ville", "Date", "Pays", "Nom du circuit", "Taille (km)");
+    printf("%-6s| %-18s| %-8s| %-20s| %-35s| %-11s| %-5s\n",
+           "Course", "Ville", "Date", "Pays", "Nom du circuit", "Taille (km)", "Tours");
 
     // Affichage des séparateurs
-    printf("------|-------------------|---------|---------------------|------------------------------------|------------|\n");
+    printf("------|-------------------|---------|---------------------|------------------------------------|------------|------|\n");
 
     // Affichage des données de chaque course
     for (int i = 0; i < num_races; ++i)
     {
-        printf("%-6d| %-18s%s| %-8s%s| %-20s%s| %-35s%s| %-11.3f|\n",
-               races[i].course, races[i].ville, compensate_for_accents(races[i].ville), races[i].date, compensate_for_accents(races[i].date), races[i].pays, compensate_for_accents(races[i].pays), races[i].nom_circuit, compensate_for_accents(races[i].nom_circuit), races[i].taille_km);
+        printf("%-6d| %-18s%s| %-8s%s| %-20s%s| %-35s%s| %-11.3f| %-5d|\n",
+               races[i].course,
+               races[i].ville, compensate_for_accents(races[i].ville),
+               races[i].date, compensate_for_accents(races[i].date),
+               races[i].pays, compensate_for_accents(races[i].pays),
+               races[i].nom_circuit, compensate_for_accents(races[i].nom_circuit),
+               races[i].taille_km,
+               races[i].nb_tour);
     }
 
     return 0;
@@ -544,7 +558,7 @@ int myRandom(int min, int max)
 // cette fonction gère le secteur nr_secteur de la voiture car_nr et retourne le temps en millisecondes que la voiture a pris pour parcourir le secteur
 int gererSecteur(int car_nr, int nr_secteur)
 {
-    int dureeSecteur_ms = myRandom(4000, 6000);
+    int dureeSecteur_ms = myRandom(4 * 6 * 1000, 5 * 6 * 1000);
     int passed_ms = 0; // nb of ms passed since beginning of the sector
     int delay_ms = 50;
     int position;
@@ -630,7 +644,7 @@ void dessinerSecteur(int car_nr, int position)
         secteur_3[positionEtoile] = '*';
     }
 
-    printf("voiture %3d - %-12s%s  , %10s%s,  tour:%d ",
+    printf("voiture %3d - %-12s%s  , %10s%s,  tour:%2d ",
            car_nr,
            shmem_data->cars[car_nr].pilote,
            compensate_for_accents(shmem_data->cars[car_nr].pilote),
@@ -851,11 +865,42 @@ void afficherBestSecteurs()
 
 void afficherIter(int iter)
 {
-    printf("%3d) - race %d:%s - nb tours: %d - x%d\n\n",
+    printf("%3d) - race %d:%s (%s) ",
            iter,
            races[shmem_data->race_nr].course,
            races[shmem_data->race_nr].ville,
-           NB_TOUR,
+           g_race_kind_desc[shmem_data->race_kind]);
+
+    int max_time_race = 0;
+    switch (shmem_data->race_kind)
+    {
+    case RACE_KIND_P1:
+    case RACE_KIND_P2:
+    case RACE_KIND_P3:
+        max_time_race = 60;
+        break;
+    case RACE_KIND_Q1:
+        max_time_race = 18;
+        break;
+    case RACE_KIND_Q2:
+        max_time_race = 15;
+        break;
+    case RACE_KIND_Q3:
+        max_time_race = 12;
+        break;
+    default:
+        break;
+    }
+
+    if (max_time_race >0) {
+        printf(" max time : %d", max_time_race);
+    } else {
+        printf("- nb tours: %d", races[shmem_data->race_nr].nb_tour);
+    }
+    
+    printf("(temps de course : %2d:%02d) - time : x%d \n\n",
+           total_race_time_ms / 1000 / 60,
+           (total_race_time_ms / 1000) % 60,
            shmem_data->time_multiplier);
 }
 
@@ -892,7 +937,11 @@ void checkKeyHit()
 void monitorerVoitures()
 {
     int iter = 0;
+    int loop_time_ms = 50;
+
+    total_race_time_ms = 0;
     shmem_data->finished = 0;
+
     while (!shmem_data->finished)
     {
         clear_screen();
@@ -903,15 +952,62 @@ void monitorerVoitures()
         afficherSecteurs();
         afficherBestSecteurs();
         afficherOptions();
-        checkKeyHit();
+
+        int max_time_race = 0;
+
+        switch (shmem_data->race_kind)
+        {
+        case RACE_KIND_P1:
+        case RACE_KIND_P2:
+        case RACE_KIND_P3:
+            max_time_race = 60;
+            break;
+        case RACE_KIND_Q1:
+            max_time_race = 18;
+            break;
+        case RACE_KIND_Q2:
+            max_time_race = 15;
+            break;
+        case RACE_KIND_Q3:
+            max_time_race = 12;
+            break;
+        default:
+            break;
+        }
+
+        switch (shmem_data->race_kind)
+        {
+        case RACE_KIND_N:
+        case RACE_KIND_S:
+            shmem_data->finished = (toutesLesVoituresOntTermine() || iter >= 200000);
+            break;
+        case RACE_KIND_P1:
+        case RACE_KIND_P2:
+        case RACE_KIND_P3:
+        case RACE_KIND_Q1:
+        case RACE_KIND_Q2:
+        case RACE_KIND_Q3:
+            if (total_race_time_ms / 1000 / 60 >= max_time_race)
+                shmem_data->finished = 1;
+            break;
+
+        default:
+            perror("unknown kind of race !");
+            exit(1);
+            break;
+        }
 
         // check if all cars have finished
+
         if (toutesLesVoituresOntTermine() == 1)
         {
             shmem_data->finished = 1;
         }
 
-        usleep(100 * 1000); // attendre x microsecond
+        checkKeyHit();
+
+        usleep(loop_time_ms * 1000); // attendre x microsecond
+        total_race_time_ms += loop_time_ms * shmem_data->time_multiplier;
     }
 }
 
@@ -1057,7 +1153,7 @@ void donner_les_points()
 void init_circuits()
 {
     nb_courses = lireCircuits(races);
-    shmem_data->race_nr = 1;
+    shmem_data->race_nr = 0;
     shmem_data->race_kind = RACE_KIND_N;
 
     // afficherCircuits(races, nb_courses);
@@ -1167,7 +1263,7 @@ void init_shmem_for_new_race()
 {
     shmem_data->fastest_car = 0;
     shmem_data->fastest_loop_time_ms = 0;
-    shmem_data->time_multiplier = 1;
+    shmem_data->time_multiplier = 10;
     shmem_data->finished = 0;
 }
 
@@ -1206,6 +1302,7 @@ void menu()
         printf("3. Select circuit\n");
         printf("4. Select kind of race\n");
         printf("5. Display scores\n");
+        printf("8. Reset scores\n");
         printf("9. Do the race (%s,%s)\n", race_city, race_kind);
         printf("Q. Quit\n");
         printf("Your choice: ");
@@ -1236,6 +1333,11 @@ void menu()
             break;
         case '5':
             clear_screen();
+            afficherScores();
+            break;
+        case '8':
+            clear_screen();
+            reset_scores();
             afficherScores();
             break;
         case '9':
