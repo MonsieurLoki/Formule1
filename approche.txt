@@ -95,5 +95,6 @@ A faire :
 -   vérifier si les sémaphores ont été utilisés là où ils sont nécessaires (le sont-ils vraiment ici ?)
 -   améliorer gestion des erreurs
 -   améliorer gestions des inputs
+-   améliorer l'affichage (temps de course hh:mm:ss.mmm; points totaux accumulés par chaque pilote; etc)
 
 *: peut être fait indépendamment de l'intégration dans le programme principal
