@@ -91,10 +91,16 @@ A faire :
 
 -	gérer une course de type Sprint
     -   les 8 premiers reçoivent des points (dans l’ordre décroissant de 8 à 1).-   etc
-    -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. Dans le cas d’une course sprint, ce fichier déterminera l’ordre de départ de la course du dimanche.
+    -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. Dans le cas d’une course sprint, 
+        ce fichier déterminera l’ordre de départ de la course du dimanche.
 -   vérifier si les sémaphores ont été utilisés là où ils sont nécessaires (le sont-ils vraiment ici ?)
 -   améliorer gestion des erreurs
 -   améliorer gestions des inputs
 -   améliorer l'affichage (temps de course hh:mm:ss.mmm; points totaux accumulés par chaque pilote; etc)
+-   systématiser l'utiliation des sémaphores (on ne les a utilisés que pour les cas les plus critiques, comme par exemple 
+    pour le multiplicateur de temps qui doit être exactement le même pour tous les processes; pour les autres
+    données (le temps dans le dernier secteur; le tour actuel; la position actuelle; etc), il n'y a chaque fois qu'un seul 
+    éditeur (une voiture donnée), et un seul lecteur (le contrôleur), et la nécessité 
+    d'un sémaphore est beaucoup moins évidente
 
 *: peut être fait indépendamment de l'intégration dans le programme principal

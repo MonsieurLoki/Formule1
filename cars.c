@@ -1,6 +1,6 @@
 // test pipes bloquants
 // ps -aux | grep "myprocess"
-// echo   $(ps -aux | grep "pipeBlo" | awk '{ print $2 }')
+// echo   $(ps -aux | grep "car" | awk '{ print $2 }')
 // kill   $(ps -aux | grep "pipeBlo" | awk '{ print $2 }')
 // tutorial: https://www.youtube.com/watch?v=WgVSq-sgHOc&ab_channel=JacobSorber
 
@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <semaphore.h>
 #include <termios.h> // for getchar()
 
 #define IPC_RESULT_ERROR (-1)
@@ -74,6 +75,7 @@ int total_race_time_ms;
 struct Car
 {
     int car_nr;
+    int car_numero;
     char pilote[20];
     float time_sector1;
     float time_sector2;
@@ -163,6 +165,32 @@ void afficherDetailsCourse(int num_course)
 void clear_screen()
 {
     printf("\033[2J\033[H");
+}
+
+// semaphore declarations and functions ------------------------------------------------------------------------------------
+
+// sem_t semaphore;
+
+sem_t *sem_time_multiplier;
+char sem_time_multiplier_st[] = "time_multiplier";
+
+sem_t *semaphore_open(char *sem_name)
+{
+    sem_t *sem;
+    // Create a semaphore with an initial value of 1
+    sem = sem_open(sem_name, O_CREAT, 0644, 1);
+    if (sem == SEM_FAILED)
+    {
+        perror("sem_open");
+        exit(1);
+    }
+    return sem;
+}
+
+void semaphore_end(sem_t *sem, char *sem_name)
+{
+    sem_close(sem);
+    sem_unlink(sem_name);
 }
 
 // generic functions ------------------------------------------------------------------------------------
@@ -569,7 +597,9 @@ int gererSecteur(int car_nr, int nr_secteur)
         position = ((100 * passed_ms) / dureeSecteur_ms);
         shmem_data->cars[car_nr].position = position;
         usleep(delay_ms * 1000); // attendre x microsecond
+        sem_wait(sem_time_multiplier);
         passed_ms += delay_ms * shmem_data->time_multiplier;
+        sem_post(sem_time_multiplier);
     }
     shmem_data->cars[car_nr].position = 100;
     // shmem_data->cars[car_nr].time_sector1 = dureeSecteur_ms;
@@ -603,6 +633,7 @@ void dessinerSecteur(int car_nr, int position)
     int status = shmem_data->cars[car_nr].status;
     int secteur_courant = shmem_data->cars[car_nr].secteur_courant;
     int tour_courant = shmem_data->cars[car_nr].tour_courant;
+    int car_numero = shmem_data->cars[car_nr].car_numero;
     const int nombreTirets = 30;
     char secteur_1[nombreTirets + 1];
     char secteur_2[nombreTirets + 1];
@@ -646,7 +677,7 @@ void dessinerSecteur(int car_nr, int position)
     }
 
     printf("voiture %3d - %-12s%s  , %10s%s,  tour:%2d ",
-           car_nr,
+           car_numero,
            shmem_data->cars[car_nr].pilote,
            compensate_for_accents(shmem_data->cars[car_nr].pilote),
            char_status_desc[status],
@@ -670,6 +701,8 @@ void vivre_ma_vie_de_voiture(int car_nr)
     }
 
     shmem_data = (Shmem_data *)block;
+    sem_time_multiplier = semaphore_open(sem_time_multiplier_st);
+
     srand(time(NULL) + car_nr);
     shmem_data->cars[car_nr].status = STATUS_RUNNING;
     while (tour_courant < NB_TOUR)
@@ -688,6 +721,8 @@ void vivre_ma_vie_de_voiture(int car_nr)
         shmem_data->cars[car_nr].total_time_de_la_course_ms = temps_total_ms;
     }
     shmem_data->cars[car_nr].status = STATUS_FINISHED;
+
+    semaphore_end(sem_time_multiplier, sem_time_multiplier_st);
     detach_memory_block(block);
 }
 
@@ -784,11 +819,13 @@ void classer()
 
 void afficherClassement()
 {
+    char temps_total_st[20];
+
     classer();
 
-    char *separ = "+---+------------------+---+---+----+-------+---------+-------+-------+-------+--------+-------+--------+";
-    char *head1 = "|   |                  |Car|Lap|Sect|Pos in |Status   |Sector |Sector |Sector |Total   |Best   |        |";
-    char *head2 = "|Pos|Pilot             |Nr |Nr |Nr  |sect(%)|Car      |   1   |   2   |   3   |Time    |Lap    |Delta   |";
+    char *separ = "+---+------------------+---+---+----+-------+---------+-------+-------+-------+----------+-------+----------+";
+    char *head1 = "|   |                  |Car|Lap|Sect|Pos in |Status   |Sector |Sector |Sector |Total     |Best   |          |";
+    char *head2 = "|Pos|Pilot             |Nr |Nr |Nr  |sect(%)|Car      |   1   |   2   |   3   |Time      |Lap    |Delta     |";
 
     printf("%s\n", separ);
     printf("%s\n", head1);
@@ -811,37 +848,76 @@ void afficherClassement()
         int best_tour_time = shmem_data->cars[classement[i]].best_tour_time_ms;
         printf("| %2d|pilote %-11s%s|%2d |%3d|%3d | %3d%%  |%9s|",
                i + 1,
-               shmem_data->cars[classement[i]].pilote,
-               compensate_for_accents(shmem_data->cars[classement[i]].pilote),
-               shmem_data->cars[classement[i]].car_nr,
+               shmem_data->cars[classement[i]].pilote, compensate_for_accents(shmem_data->cars[classement[i]].pilote),
+               shmem_data->cars[classement[i]].car_numero,
                tour_courant,
                secteur_courant,
                position,
                status_desc);
 
-        printf("%7.3f|%7.3f|%7.3f|%8.3f|%7.3f|",
+        sprintf(temps_total_st, "%3d:%02d.%03d",
+                temps_total / 1000 / 60,
+                (temps_total / 1000) % 60,
+                temps_total % 1000);
+
+        printf("%7.3f|%7.3f|%7.3f|%s|%7.3f|",
                (time_sector1 * 1.0) / 1000,
                (time_sector2 * 1.0) / 1000,
                (time_sector3 * 1.0) / 1000,
-               (temps_total * 1.0) / 1000,
+               temps_total_st,
                (best_tour_time * 1.0) / 1000);
 
+
+
+
+        char delta_st[20];
         if (i == 0)
         {
-            printf("%8.3f|\n", (temps_total * 1.0) / 1000);
+            sprintf(delta_st, "%3d:%02d.%03d",
+               temps_total / 1000 / 60,
+               (temps_total / 1000) % 60,
+               (temps_total % 1000));
         }
         else
         {
             if (shmem_data->cars[classement[0]].tour_courant == shmem_data->cars[classement[i]].tour_courant &&
                 shmem_data->cars[classement[0]].status == shmem_data->cars[classement[i]].status)
             {
-                printf("+%7.3f|\n", (difference * 1.0) / 1000);
+                sprintf(delta_st, "+%2d:%02d.%03d", 
+                    difference / 1000 / 60,
+                    (difference / 1000) % 60,
+                    (difference % 1000));
             }
             else
             {
-                printf("   -    |\n");
+                sprintf(delta_st, "    -     ");
             }
         }
+        printf("%s|\n", delta_st);
+
+
+
+
+
+
+
+
+        // if (i == 0)
+        // {
+        //     printf("%8.3f|\n", (temps_total * 1.0) / 1000);
+        // }
+        // else
+        // {
+        //     if (shmem_data->cars[classement[0]].tour_courant == shmem_data->cars[classement[i]].tour_courant &&
+        //         shmem_data->cars[classement[0]].status == shmem_data->cars[classement[i]].status)
+        //     {
+        //         printf("+%7.3f|\n", (difference * 1.0) / 1000);
+        //     }
+        //     else
+        //     {
+        //         printf("   -    |\n");
+        //     }
+        // }
     }
     printf("%s\n", separ);
     printf("\n");
@@ -858,14 +934,16 @@ void afficherSecteurs()
 
 void afficherBestSecteurs()
 {
-
-    printf("best time for sector 1: time : %6.3f, car : %d \n", (shmem_data->best_sectors[1].time_ms * 1.0) / 1000, shmem_data->best_sectors[1].car_nr);
-    printf("best time for sector 2: time : %6.3f, car : %d \n", (shmem_data->best_sectors[2].time_ms * 1.0) / 1000, shmem_data->best_sectors[2].car_nr);
-    printf("best time for sector 3: time : %6.3f, car : %d \n", (shmem_data->best_sectors[3].time_ms * 1.0) / 1000, shmem_data->best_sectors[3].car_nr);
+    printf("best time for sector 1: time : %6.3f, pilote : %s \n", (shmem_data->best_sectors[1].time_ms * 1.0) / 1000, pilotes[shmem_data->best_sectors[1].car_nr].nom);
+    printf("best time for sector 2: time : %6.3f, pilote : %s \n", (shmem_data->best_sectors[2].time_ms * 1.0) / 1000, pilotes[shmem_data->best_sectors[2].car_nr].nom);
+    printf("best time for sector 3: time : %6.3f, pilote : %s \n", (shmem_data->best_sectors[3].time_ms * 1.0) / 1000, pilotes[shmem_data->best_sectors[3].car_nr].nom);
 }
 
 void afficherIter(int iter)
 {
+
+    int time_multiplier;
+
     printf("%3d) - race %d:%s (%s) ",
            iter,
            races[shmem_data->race_nr].course,
@@ -893,16 +971,23 @@ void afficherIter(int iter)
         break;
     }
 
-    if (max_time_race >0) {
+    if (max_time_race > 0)
+    {
         printf(" max time : %d", max_time_race);
-    } else {
-        printf("- nb tours: %d", races[shmem_data->race_nr].nb_tour);
     }
-    
+    else
+    {
+        printf("- nb tours: %d ", races[shmem_data->race_nr].nb_tour);
+    }
+
+    sem_wait(sem_time_multiplier);
+    time_multiplier = shmem_data->time_multiplier;
+    sem_post(sem_time_multiplier);
+
     printf("(temps de course : %2d:%02d) - time : x%d \n\n",
            total_race_time_ms / 1000 / 60,
            (total_race_time_ms / 1000) % 60,
-           shmem_data->time_multiplier);
+           time_multiplier);
 }
 
 void afficherOptions()
@@ -919,11 +1004,15 @@ void checkKeyHit()
         switch (c)
         {
         case '+':
+            sem_wait(sem_time_multiplier);
             shmem_data->time_multiplier *= 2;
+            sem_post(sem_time_multiplier);
             break;
         case '-':
+            sem_wait(sem_time_multiplier);
             if (shmem_data->time_multiplier >= 2)
                 shmem_data->time_multiplier /= 2;
+            sem_post(sem_time_multiplier);
             break;
         case 'q':
             // finished = 1;
@@ -1008,7 +1097,9 @@ void monitorerVoitures()
         checkKeyHit();
 
         usleep(loop_time_ms * 1000); // attendre x microsecond
+        sem_wait(sem_time_multiplier);
         total_race_time_ms += loop_time_ms * shmem_data->time_multiplier;
+        sem_post(sem_time_multiplier);
     }
 }
 
@@ -1264,8 +1355,14 @@ void init_shmem_for_new_race()
 {
     shmem_data->fastest_car = 0;
     shmem_data->fastest_loop_time_ms = 0;
+    // no need to use a semaphore here (not yet necessary, only one concurrent process at this stage)
     shmem_data->time_multiplier = 10;
     shmem_data->finished = 0;
+
+    for (int i = 0; i < NB_VOITURE; i++)
+    {
+        shmem_data->cars[i].car_numero = pilotes[i].num;
+    }
 }
 
 void do_the_race()
@@ -1371,6 +1468,7 @@ void init_shmem()
 int main()
 {
     init_shmem();
+    sem_time_multiplier = semaphore_open(sem_time_multiplier_st);
 
     initialisation_best_sectors_time();
     init_circuits();
@@ -1380,6 +1478,7 @@ int main()
     menu();
 
     detach_memory_block((char *)shmem_data);
+    semaphore_end(sem_time_multiplier, sem_time_multiplier_st);
     destroy_shmem();
 
     return 0;

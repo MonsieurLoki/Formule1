@@ -10,6 +10,7 @@
                 "-g",
                 "${file}",
                 "-lm",
+                "-lpthread",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
             ],

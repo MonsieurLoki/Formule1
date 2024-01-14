@@ -5,5 +5,11 @@
         "ipc.h": "c",
         "time.h": "c",
         "string.h": "c"
-    }
+    },
+    "editor.cursorBlinking": "blink", // other options : smooth, solid, blink, expand
+    "editor.cursorWidth": 3, // Adjust the width value as needed
+    "workbench.colorCustomizations": {
+        "editorCursor.foreground": "#FF0000" // Use the color code you prefer
+    },
+    "editor.cursorStyle": "line" // Other options: "line", "block", "underline"
 }
