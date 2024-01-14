@@ -57,7 +57,7 @@ Fait :
 
 A faire :
 
--	pour  course de type Normale
+-   pour course de type Normale
     -	Toujours savoir qui a le tour le plus rapide
     -	Conserver sur fichier le classement final et les meilleurs S1, S2, S3 et le meilleur tour. Dans le cas d’une course sprint, ce fichier déterminera l’ordre de départ de la course du dimanche.
     -	Savoir si la voiture est out (abandon) ; dans ce cas, elle sera classée en fin de classement

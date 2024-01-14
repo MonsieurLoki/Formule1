@@ -545,7 +545,8 @@ void destroy_shmem()
     }
     else
     {
-        printf("Could not destroy block: %s\n", FILENAME);
+        // printf("Could not destroy block: %s\n", FILENAME);
+        ;
     }
 }
 
