@@ -23,8 +23,8 @@
 #include <termios.h> // for getchar()
 
 #define IPC_RESULT_ERROR (-1)
-#define NB_VOITURE 20
-#define NB_TOUR 50
+#define NB_VOITURE 15
+// #define NB_TOUR 50
 #define STATUS_FINISHED 2
 #define STATUS_RUNNING 1
 #define STATUS_READY 0
@@ -705,7 +705,7 @@ void vivre_ma_vie_de_voiture(int car_nr)
 
     srand(time(NULL) + car_nr);
     shmem_data->cars[car_nr].status = STATUS_RUNNING;
-    while (tour_courant < NB_TOUR)
+    while (tour_courant < races[shmem_data->race_nr].nb_tour)
     {
         tour_courant += 1;
         shmem_data->cars[car_nr].tour_courant = tour_courant;
